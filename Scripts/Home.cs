@@ -1,113 +1,57 @@
+using System.Collections.Generic;
 using Godot;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
 using Godot.Collections;
-using Gtk;
-using Mono.Unix;
-using FileAccess = Godot.FileAccess;
-using Image = Gtk.Image;
-using ProgressBar = Godot.ProgressBar;
-using Window = Godot.Window;
+using YuzuToolbox.Scripts.Modes;
 
 
 public partial class Home : Control
 {
-	[Export()] private float _appVersion = 2.2f;
-	[Export()] private float _settingsVersion = 1.7f;
-	
-	[Export()] private Godot.Image _icon;
-	[Export()] private AudioStreamPlayer _backgroundAudio;
-	[Export()] private ColorRect _header;
-	[Export()] private ColorRect _footer;
-	[Export()] private Godot.Label _headerLabel;
+	[ExportGroup("App")]
+	[Export()] private float _appVersion = 2f;
+	[Export()] private OptionButton _appModesButton;
+	[Export()] private Godot.Collections.Dictionary<int, string> _appModes;
 	[Export()] private TextureRect _darkBg;
 	[Export()] private TextureRect _lightBg;
-	[Export()] private Godot.VSeparator _headerSeparator;
-	[Export()] private OptionButton _versionButton;
-	[Export()] private CheckBox _createShortcutButton;
-	[Export()] private Godot.Button _locationButton;
-	[Export()] private Godot.Button _downloadButton;
-	[Export()] private Panel _downloadWindow;
 	[Export()] private ColorRect _downloadWindowApp;
-	[Export()] private Godot.Label _downloadLabel;
-	[Export()] private CheckBox _autoExtractButton;
-	[Export()] private ProgressBar _downloadProgressBar;
-	[Export()] private CheckBox _customVersionCheckBox;
-	[Export()] private SpinBox _customVersionSpinBox;
-	[Export()] private Timer _downloadUpdateTimer;
-	[Export()] private CheckBox _enableLightTheme;
-	[Export()] private Popup _errorPopup;
-	[Export()] private Godot.Label _errorLabel;
-	[Export()] private Godot.Label _lastVersionLabel; 
-	[Export()] private HttpRequest _latestReleaseRequester;
-	[Export()] private HttpRequest _downloadRequester;
-	[Export()] private String _pineappleLatestUrl;
-	[Export()] private String _pineappleDownloadBaseUrl;
-	[Export()] private String _windowsFolderName = "yuzu-windows-msvc-early-access";
-	[Export()] private string _yuzuBaseString = "Yuzu-EA-";
-	[Export()] private string _saveName;
-	[Export()] private int _previousVersionsToAdd = 10;
+	[Export()] private AudioStreamPlayer _backgroundAudio;
+	[Export()] private CheckButton _muteButton;
+	[Export()] private CheckButton _enableLightTheme;
 	[Export()] private Array<Theme> _themes;
 	[Export()] private Array<StyleBoxLine> _themesSeparator;
-	[Export()] private TextureRect _warningIcon1;
-	[Export()] private TextureRect _warningIcon2;
+	[Export()] private ColorRect _header;
+	[Export()] private Label _headerLabel;
+	[Export()] private Label _latestVersionLabel;
+	[Export()] private Control _errorConsole;
 
-	private FileChooserDialog _fileChooser;
-	private ResourceSaveManager _saveManager;
-	private SettingsResource _settings;
-	private String _osUsed;
-	private string _yuzuExtensionString;
+	[ExportGroup("ModManager")]
+	[Export()] private ItemList _modList;
+	[Export()] private AnimatedSprite2D _modMangerLoadingSprite;
+	[Export()] private Label _modManagerLoadingLabel;
+
+
+	// Internal variables
 	private Theme _currentTheme;
-	
-	public override void _Ready()
+
+
+	// Godot functions
+	private void Initiate()
 	{
-		// Sets minimum window size to prevent text clipping and UI breaking at smaller scales.
-		DisplayServer.WindowSetMinSize(new Vector2I(1024,576));
-		_osUsed = OS.GetName();
-		if (_osUsed == "Linux")
-		{
-			_saveName += ".AppImage";
-			_yuzuExtensionString = ".AppImage";
-			_autoExtractButton.Disabled = true;
-		}
-		else if (_osUsed == "Windows")
-		{
-			_createShortcutButton.Disabled = true;
-			_saveName += ".zip";
-			_yuzuExtensionString = ".zip";
-		}
-		
-		_saveManager = new ResourceSaveManager();
-		_saveManager.Version = _settingsVersion;
-		GetSettings();
-		_locationButton.Text = _settings.SaveDirectory;
-		
-		// Call a request to get the latest versions and connect it to our GetNewVersions function
-		_latestReleaseRequester.RequestCompleted += AddVersions;
-		_latestReleaseRequester.Request(_pineappleLatestUrl);
+		// Sets minimum window size and display mode.
+		DisplayServer.WindowSetMinSize(new Vector2I(1024, 576));
+		DisplayServer.WindowSetMode((DisplayServer.WindowMode)Globals.Instance.Settings.DisplayMode);
 
-		_downloadButton.Disabled = true;
-		_downloadButton.Pressed += InstallSelectedVersion;
-		_locationButton.Pressed += OpenFileChooser;
-		_downloadRequester.RequestCompleted += VersionDownloadCompleted;
-		_downloadUpdateTimer.Timeout += UpdateDownloadBar;
-		_downloadWindow.Visible = false;
-		
+		// Set the theme
+		SetTheme(Globals.Instance.Settings.LightModeEnabled);
+
+		// Sets scaling (Called manually to hopefully fix #31
+		WindowResized();
+
+		// Signals
 		Resized += WindowResized;
-
-		_customVersionCheckBox.Toggled += CustomVersionSpinBoxEditable;
-		_customVersionSpinBox.Editable = false;
-
-		_enableLightTheme.Toggled += SetTheme;
-
-		_downloadButton.GrabFocus();
-		
-		_warningIcon1.Visible = false;
-		_warningIcon2.Visible = false;
 	}
 
+
+	// Custom functions
 	private void SetTheme(bool enableLight)
 	{
 		_lightBg.Visible = enableLight;
@@ -116,444 +60,49 @@ public partial class Home : Control
 		_header.Color = enableLight ? new Godot.Color(0.74117648601532f, 0.76470589637756f, 0.78039216995239f) : new Godot.Color(0.16862745583057f, 0.1803921610117f, 0.18823529779911f);
 		_downloadWindowApp.Color = enableLight ? new Godot.Color(0.74117648601532f, 0.76470589637756f, 0.78039216995239f) : new Godot.Color(0.16862745583057f, 0.1803921610117f, 0.18823529779911f);
 		_enableLightTheme.ButtonPressed = enableLight;
-		_settings.LightModeEnabled = enableLight;
-		_saveManager._settings = _settings;
-		_saveManager.WriteSave();
+		Globals.Instance.Settings.LightModeEnabled = enableLight;
+		Globals.Instance.SaveManager.WriteSave(Globals.Instance.Settings);
 		Theme = _currentTheme;
 	}
 
 
+	private void SetMode(int newMode)
+	{
+		switch (_appModes[newMode])
+		{
+			case "yuzu":
+				Globals.Instance.Settings.AppMode = new ModeYuzu();
+				break;
+			case "ryujinx":
+				Globals.Instance.Settings.AppMode = new ModeRyujinx();
+				break;
+		}
+	}
+
+
+	private void OpenConsole()
+	{
+		_errorConsole.Visible = !_errorConsole.Visible;
+	}
+	
+	
+	// Signal functions
 	private void WindowResized()
 	{
-		float scaleRatio = (float)GetWindow().Size.X / 1920;
-		_headerLabel.AddThemeFontSizeOverride("font_size", (int)(scaleRatio * 76));
+		float scaleRatio = (((float)GetWindow().Size.X / 1920) + ((float)GetWindow().Size.Y / 1080)) / 2;
+		_modList.IconScale = scaleRatio;
+		_modMangerLoadingSprite.Scale = new Vector2(scaleRatio, scaleRatio);
+		_modManagerLoadingLabel.AddThemeFontSizeOverride("font_size", (int)(scaleRatio * 64));
+		_headerLabel.AddThemeFontSizeOverride("font_size", (int)(scaleRatio * 49));
+		_latestVersionLabel.AddThemeFontSizeOverride("font_size", (int)(scaleRatio * 32));
 		_currentTheme.DefaultFontSize = Mathf.Clamp((int)(scaleRatio * 35), 20, 50);
 	}
 
 
-	private void CustomVersionSpinBoxEditable(bool editable)
+	private void ExitButtonPressed()
 	{
-		_customVersionSpinBox.Editable = editable;
-		_versionButton.Disabled = editable;
-	}
-	
-	
-	private void InstallSelectedVersion()
-	{
-		int version;
-		DeleteOldVersion();
-		
-		// Set old install (if it exists) to not be disabled anymore.
-		if (_settings.InstalledVersion != -1)
-		{
-			_versionButton.SetItemDisabled(_versionButton.GetItemIndex(_settings.InstalledVersion), false);
-		}
-
-		if (_customVersionCheckBox.ButtonPressed)
-		{
-			version = (int)_customVersionSpinBox.Value;
-		}
-		else
-		{
-			int versionIndex = _versionButton.Selected;
-			version = _versionButton.GetItemText(versionIndex).ToInt();
-		}
-
-		_downloadButton.Disabled = true;
-		_locationButton.Disabled = true;
-		_settings.InstalledVersion = version;
-		_downloadLabel.Text = "Downloading...";
-		_downloadWindow.Visible = true;
-		_downloadLabel.GrabFocus();
-		_downloadRequester.DownloadFile = $@"{_settings.SaveDirectory}/{_saveName}";
-		_downloadRequester.Request($@"{_pineappleDownloadBaseUrl}{version}/{_osUsed}-{_yuzuBaseString}{version}{_yuzuExtensionString}");
-		_downloadUpdateTimer.Start();
+		GetTree().Quit();
 	}
 
-
-	private void VersionDownloadCompleted(long result, long responseCode, string[] headers, byte[] body)
-	{
-		_downloadUpdateTimer.Stop();
-		_downloadButton.Disabled = false;
-		_locationButton.Disabled = false;
-		if (result == (int)HttpRequest.Result.Success)
-		{
-			_saveManager._settings = _settings;
-			_saveManager.WriteSave();
-			_downloadProgressBar.Value = 100;
-			_downloadLabel.Text = "Successfully Downloaded!";
-			
-			AddInstalledVersion();
-			UnpackAndSetPermissions();
-			if (_createShortcutButton.ButtonPressed)
-			{
-				_downloadWindow.Visible = false;
-				CreateShortcut();
-			}
-			_downloadWindow.Visible = false;
-		}
-		else
-		{
-			_downloadProgressBar.Value = 0;
-		}
-	}
-	
-	
-	private void UpdateDownloadBar()
-	{
-		_downloadProgressBar.Value = (float)_downloadRequester.GetDownloadedBytes()/_downloadRequester.GetBodySize() * 100;
-	}
-
-
-	private void CreateShortcut()
-	{
-		String shortcutName = "yuzu-ea.desktop";
-		String iconPath = $@"{_settings.SaveDirectory}/Icon.png";
-		
-		if (_osUsed == "Linux")
-		{
-			_icon.SavePng(iconPath);
-			string shortcutContent = $@"
-[Desktop Entry]
-Comment=Nintendo Switch video game console emulator
-Exec={GetExistingVersion()}
-GenericName=Switch Emulator
-Icon={iconPath}
-MimeType=
-Name=Yuzu-EA
-Path=
-StartupNotify=true
-Terminal=false
-TerminalOptions=
-Type=Application
-Keywords=Nintendo;Switch;
-Categories=Game;Emulator;Qt;
-";
-
-			if (Directory.Exists("/usr/share/applications/"))
-			{
-				string shortcutPath = $@"/usr/share/applications/{shortcutName}";
-
-				try
-				{
-					string tempShortcutPath = $@"{_settings.SaveDirectory}/{shortcutName}";
-					File.WriteAllText(tempShortcutPath, shortcutContent);
-					ProcessStartInfo startInfo = new ProcessStartInfo
-					{
-						FileName = "pkexec",
-						Arguments = $"mv {tempShortcutPath} {shortcutPath}",
-						UseShellExecute = false
-					};
-
-					Process process = new Process { StartInfo = startInfo };
-					process.Start();
-					process.WaitForExit();
-				}
-				catch (Exception shortcutError)
-				{
-					ErrorPopup($@"Error creating shortcut, creating new at {shortcutPath}. Error:{shortcutError}");
-					shortcutPath = $@"{_settings.SaveDirectory}/{shortcutName}";
-					File.WriteAllText(shortcutPath, shortcutContent);
-				}
-			}
-		}
-		else if (_osUsed == "Windows")
-		{
-			
-		}
-	}
-	
-
-	private void AddVersions(long result, long responseCode, string[] headers, byte[] body)
-	{
-		if (result == (int)HttpRequest.Result.Success)
-		{
-			int latestVersion = GetLatestVersion(Encoding.UTF8.GetString(body));
-			_customVersionSpinBox.Value = latestVersion;
-			_lastVersionLabel.Text = $"Latest: {latestVersion.ToString()}";
-
-			//Add a version item for the latest and the dictated amount of previous versions.
-			for (int previousIndex = 0; previousIndex < _previousVersionsToAdd; previousIndex++)
-			{
-				_versionButton.AddItem((latestVersion-previousIndex).ToString(), latestVersion-previousIndex);
-			}
-
-			//Checks if there is already a version installed, and if so adds it to the list
-			if (_settings.InstalledVersion != -1)
-			{
-				AddInstalledVersion();
-			}
-
-			_downloadButton.Disabled = false;
-		}
-		else
-		{
-			CallDeferred("ErrorPopup", "Failed to get latest versions error code: " + responseCode);
-		}
-	}
-
-
-	private void AddInstalledVersion()
-	{
-		var installedVersion = _settings.InstalledVersion;
-		var selectedIndex = _versionButton.GetItemIndex(installedVersion);
-		_customVersionSpinBox.Value = installedVersion;
-				
-		// Checks if the item was already added, if so sets it as current, otherwise adds a new item entry for it.
-		if (selectedIndex > 0)
-		{
-			_versionButton.Selected = selectedIndex;
-		}
-		else
-		{
-			_versionButton.AddItem(installedVersion.ToString(), installedVersion);
-			selectedIndex = _versionButton.GetItemIndex(installedVersion);
-			_versionButton.Selected = selectedIndex;
-		}
-		_versionButton.SetItemDisabled(selectedIndex, true);
-	}
-
-
-	private int GetLatestVersion(String rawVersionData)
-	{
-		string searchName = $@"{_osUsed}-{_yuzuBaseString}";
-		int versionIndex = rawVersionData.Find(searchName);
-		//GD.Print(versionIndex);
-
-		// Using our starting index subtract the index of our extension from it and add 1 to get the length of the version
-		int versionLength =  rawVersionData.Find(_yuzuExtensionString) -versionIndex -searchName.Length;
-		//GD.Print(versionLength);
-		
-		// Return version by starting at our start index (accounting for our search string) and going the previously determined length
-		return rawVersionData.Substring(versionIndex + searchName.Length, versionLength).ToInt();
-	}
-
-
-	private void UnpackAndSetPermissions()
-	{
-		string yuzuPath = GetExistingVersion();
-		if (_osUsed == "Linux")
-		{
-			var yuzuFile = new Mono.Unix.UnixFileInfo(yuzuPath)
-			{
-				FileAccessPermissions = FileAccessPermissions.UserReadWriteExecute
-			};
-		}
-		else if (_osUsed == "Windows")
-		{
-			if (_autoExtractButton.ButtonPressed)
-			{
-				System.IO.Compression.ZipFile.ExtractToDirectory(yuzuPath, _settings.SaveDirectory);
-				String yuzuWindowsDirectory = $@"{_settings.SaveDirectory}/{_windowsFolderName}";
-				if (Directory.Exists(yuzuWindowsDirectory))
-				{
-					MoveFilesAndDirs(yuzuWindowsDirectory, _settings.SaveDirectory);
-				}
-			}
-		}
-	}
-
-	
-	private void GetSettings()
-	{
-		if (ResourceSaveManager.SaveExists())
-		{
-			var lastSave = (ResourceSaveManager)ResourceSaveManager.LoadSaveGame();
-			
-			if (lastSave.Version != _settingsVersion)
-			{
-				CallDeferred("ErrorPopup", $@"Error loading settings, version mismatch detected. Settings have been regenerated.");
-				_saveManager._settings = new SettingsResource();
-				_saveManager.WriteSave();
-			}
-			_settings = lastSave._settings;
-		}
-		else
-		{
-			_settings = new SettingsResource();
-			_saveManager._settings = _settings;
-			_saveManager.WriteSave();
-		}
-		SetTheme(_settings.LightModeEnabled);
-
-	}
-
-	private String GetExistingVersion()
-	{
-		if (DirAccess.DirExistsAbsolute(_settings.SaveDirectory))
-		{
-			var previousSave = DirAccess.Open(_settings.SaveDirectory);
-
-			foreach (var file in previousSave.GetFiles())
-			{
-				if (file.GetExtension() == "AppImage" || file.GetExtension() == "zip")
-				{
-					return $@"{_settings.SaveDirectory}/{file}";
-				}
-			}
-		}	
-
-		return "";
-	}
-
-
-	private void DeleteOldVersion()
-	{
-		var oldVersion = GetExistingVersion();
-		
-		if (_osUsed == "Linux")
-		{
-			if (oldVersion != "")
-			{
-				File.Delete(oldVersion);
-			}
-		}
-		
-		else if (_osUsed == "Windows")
-		{
-			if (_autoExtractButton.ButtonPressed)
-			{
-				DeleteDirectoryContents(_settings.SaveDirectory);
-			}
-			else
-			{
-				if (oldVersion != "")
-				{
-					File.Delete(oldVersion);
-				}
-			}
-		}
-
-	}
-	
-
-	private void OpenFileChooser()
-	{
-		Application.Init();
-		try
-		{
-			Application.Init();
-		}
-		catch (Exception gtkError)
-		{
-			ErrorPopup("opening GTK window failed: " + gtkError);
-		}
-		_fileChooser = new FileChooserDialog("Select a File", null, FileChooserAction.SelectFolder);
-
-		// Add a "Cancel" button to the dialog
-		_fileChooser.AddButton("Cancel", ResponseType.Cancel);
-
-		// Add an "Open" button to the dialog
-		_fileChooser.AddButton("Open", ResponseType.Ok);
-
-		// Set the initial directory (optional)
-		_fileChooser.SetCurrentFolder("/");
-
-		// Connect the response signal
-		_fileChooser.Response += OnFileChooserResponse;
-
-		// Show the dialog
-		_fileChooser.Show();
-		Application.Run();
-	}
-
-	private void OnFileChooserResponse(object sender, ResponseArgs args)
-	{
-		if (args.ResponseId == ResponseType.Ok)
-		{
-			// The user selected a file
-			_settings.SaveDirectory = _fileChooser.File.Path;
-			_locationButton.Text = _settings.SaveDirectory;
-		}
-
-		// Clean up resources4
-		_saveManager._settings = _settings;
-		_saveManager.WriteSave();
-		_fileChooser.Dispose();
-		Application.Quit();
-	}
-
-
-	static void MoveFilesAndDirs(string sourceDirectory, string targetDirectory)
-	{
-		// Create the target directory if it doesn't exist
-		if (!Directory.Exists(targetDirectory))
-		{
-			Directory.CreateDirectory(targetDirectory);
-		}
-
-		// Get all files and directories from the source directory
-		string[] files = Directory.GetFiles(sourceDirectory);
-		string[] directories = Directory.GetDirectories(sourceDirectory);
-
-		// Move files to the target directory
-		foreach (string file in files)
-		{
-			string fileName = Path.GetFileName(file);
-			string targetPath = Path.Combine(targetDirectory, fileName);
-			File.Move(file, targetPath);
-		}
-
-		// Move directories to the target directory
-		foreach (string directory in directories)
-		{
-			string directoryName = Path.GetFileName(directory);
-			string targetPath = Path.Combine(targetDirectory, directoryName);
-			Directory.Move(directory, targetPath);
-		}
-
-		// Optional: Remove the source directory if it is empty
-		if (Directory.GetFiles(sourceDirectory).Length == 0 && Directory.GetDirectories(sourceDirectory).Length == 0)
-		{
-			Directory.Delete(sourceDirectory);
-		}
-	}
-	
-	
-	
-	static void DeleteDirectoryContents(string directoryPath)
-	{
-		// Delete all files within the directory
-		string[] files = Directory.GetFiles(directoryPath);
-		foreach (string file in files)
-		{
-			File.Delete(file);
-		}
-
-		// Delete all subdirectories within the directory
-		string[] directories = Directory.GetDirectories(directoryPath);
-		foreach (string directory in directories)
-		{
-			DeleteDirectoryContents(directory); // Recursively delete subdirectory contents
-			Directory.Delete(directory);
-		}
-	}
-	
-
-	private void ErrorPopup(String error)
-	{
-		_errorLabel.Text = $@"Error:{error}";
-		_errorPopup.Visible = true;
-		_errorPopup.InitialPosition = Window.WindowInitialPosition.Absolute;
-		_errorPopup.PopupCentered();
-	}
-	
-	private void ToggledMusicButton(bool ButtonPressed)
-	{
-		if(ButtonPressed) {_backgroundAudio.VolumeDb = -(20.0f * (1.0f - 0.5f) + 80.0f * 0.5f);}
-		else {_backgroundAudio.VolumeDb = -20;}
-	}
-
-	private void ClearInstallationFolder()
-	{
-		DeleteDirectoryContents(_settings.SaveDirectory);
-	}
-
-	private void ExtractWindowsToggled(bool ButtonPressed)
-	{
-		_warningIcon1.Visible = ButtonPressed;
-		_warningIcon2.Visible = ButtonPressed;
-	}
 }
-
 

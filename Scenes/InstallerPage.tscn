@@ -1,0 +1,302 @@
+[gd_scene load_steps=5 format=3 uid="uid://cr3wosequvma8"]
+
+[ext_resource type="Script" path="res://Scripts/Installer.cs" id="1_3lw4p"]
+[ext_resource type="Texture2D" uid="uid://e5vtrghoacs2" path="res://ImageAssets/WarningSign.png" id="1_xly6n"]
+[ext_resource type="Image" uid="uid://bvmy5gufcs58i" path="res://ImageAssets/ShortcutIcon.png" id="2_dhhpw"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7am6t"]
+bg_color = Color(0.168627, 0.180392, 0.188235, 0.529412)
+
+[node name="Installer" type="Control" node_paths=PackedStringArray("_versionButton", "_createShortcutButton", "_autoUpdateButton", "_executableNameLineEdit", "_installLocationButton", "_downloadButton", "_downloadWindow", "_downloadLabel", "_downloadUpdateTimer", "_downloadProgressBar", "_clearShadersButton", "_shadersLocationButton", "_autoUnpackButton", "_customVersionCheckBox", "_customVersionSpinBox", "_downloadRequester", "_extractWarning", "_downloadWarning", "_clearShadersWarning") groups=["Initiate"]]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_3lw4p")
+_repoName = "pineapple-src"
+_repoOwner = "pineappleEA"
+_pineappleLatestUrl = "https://github.com/pineappleEA/pineapple-src/releases/latest"
+_pineappleDownloadBaseUrl = "https://github.com/pineappleEA/pineapple-src/releases/download/EA-"
+_titlesKeySite = "https://switchbrew.org/w/index.php?title=Title_list/Games&mobileaction=toggle_view_desktop"
+_previousVersionsToAdd = 20
+_icon = ExtResource("2_dhhpw")
+_versionButton = NodePath("ControlsContainer/VersionSelectionButton")
+_createShortcutButton = NodePath("ControlsContainer/CreateShortcutButton")
+_autoUpdateButton = NodePath("ControlsContainer/AutoUpdate")
+_executableNameLineEdit = NodePath("ControlsContainer/ExecutableName")
+_installLocationButton = NodePath("ControlsContainer/LocationButton")
+_downloadButton = NodePath("DownloadButton")
+_downloadWindow = NodePath("DownloadWindow")
+_downloadLabel = NodePath("DownloadWindow/Window/DownloadLabelBox")
+_downloadUpdateTimer = NodePath("DownloadWindow/Window/DownloadProgressUpdater")
+_downloadProgressBar = NodePath("DownloadWindow/Window/DownloadProgress")
+_clearShadersButton = NodePath("ControlsContainer/ClearShadersButton")
+_shadersLocationButton = NodePath("ControlsContainer/ShaderLocationButton")
+_autoUnpackButton = NodePath("ControlsContainer/ExtractButton")
+_customVersionCheckBox = NodePath("ControlsContainer/CustomVersion/CustomVersionCheckBox")
+_customVersionSpinBox = NodePath("ControlsContainer/CustomVersion/CustomVersionSpinBox")
+_downloadRequester = NodePath("DownloadRequester")
+_extractWarning = NodePath("ControlsContainer/ExtractLabel/ExtractWarning")
+_downloadWarning = NodePath("DownloadButton/DownloadWarning")
+_clearShadersWarning = NodePath("ControlsContainer/ClearShadersLabel/ClearShadersWarning")
+metadata/_edit_use_anchors_ = true
+
+[node name="ControlsContainer" type="GridContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.12301
+anchor_right = 0.95
+anchor_bottom = 0.437593
+grow_horizontal = 2
+grow_vertical = 2
+columns = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="VersionSelectionLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Versions:"
+
+[node name="VersionSelectionButton" type="OptionButton" parent="ControlsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+alignment = 1
+
+[node name="UseCustomVersionLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Use custom:"
+
+[node name="CustomVersion" type="HBoxContainer" parent="ControlsContainer"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="CustomVersionCheckBox" type="CheckBox" parent="ControlsContainer/CustomVersion"]
+layout_mode = 2
+focus_mode = 0
+flat = true
+
+[node name="CustomVersionSpinBox" type="SpinBox" parent="ControlsContainer/CustomVersion"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 3090.0
+max_value = 99999.0
+value = 3090.0
+rounded = true
+
+[node name="LocationLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Install location:"
+
+[node name="LocationButton" type="Button" parent="ControlsContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Location to intall Yuzu"
+
+[node name="ShaderLocationLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Shaders location:"
+
+[node name="ShaderLocationButton" type="Button" parent="ControlsContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Yuzu shaders location"
+
+[node name="ExecutableNameLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+tooltip_text = "Set a custom executable name, e.g yuzu (turns into yuzu.exe or yuzu.appimage)"
+mouse_filter = 1
+text = "Executable Name:"
+
+[node name="ExecutableName" type="LineEdit" parent="ControlsContainer"]
+layout_mode = 2
+text = "yuzu"
+alignment = 1
+
+[node name="ExtractLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Auto unpack:"
+
+[node name="ExtractWarning" type="TextureRect" parent="ControlsContainer/ExtractLabel"]
+layout_mode = 2
+anchor_left = 1.19313
+anchor_top = 0.179487
+anchor_right = 1.33476
+anchor_bottom = 0.897436
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_xly6n")
+expand_mode = 1
+stretch_mode = 4
+metadata/_edit_use_anchors_ = true
+
+[node name="ExtractButton" type="CheckBox" parent="ControlsContainer"]
+layout_mode = 2
+tooltip_text = "(Windows only) WARNING WILL DELETE ALL DATA IN SELECTED INSTALL LOCATION!"
+focus_mode = 0
+text = "Windows only:WARNING WILL DELETE ALL DATA IN INSTALL LOCATION"
+alignment = 1
+text_overrun_behavior = 4
+
+[node name="ClearShadersLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Clear shaders"
+autowrap_mode = 3
+
+[node name="ClearShadersWarning" type="TextureRect" parent="ControlsContainer/ClearShadersLabel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.696742
+anchor_top = 0.230769
+anchor_right = 0.774436
+anchor_bottom = 0.897436
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_xly6n")
+expand_mode = 1
+stretch_mode = 4
+metadata/_edit_use_anchors_ = true
+
+[node name="ClearShadersButton" type="CheckBox" parent="ControlsContainer"]
+layout_mode = 2
+tooltip_text = "Clears shaders on install (WARNING DELETES ALL DATA IN SELECTED LOCATION)"
+text = "Clear shaders on install (WARNING DELETES ALL DATA IN SELECTED LOCATION)"
+alignment = 1
+text_overrun_behavior = 4
+clip_text = true
+
+[node name="CreateShortcutLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Create start shortcut:  "
+
+[node name="CreateShortcutButton" type="CheckBox" parent="ControlsContainer"]
+layout_mode = 2
+tooltip_text = "Creates a start menu shortcut for yuzu-ea (requires auto unpack and admin privleges on windows)"
+focus_mode = 0
+text = "Creates a start menu shortcut for yuzu-ea (requires auto unpack and admin privleges on windows)"
+alignment = 1
+text_overrun_behavior = 4
+
+[node name="AutoUpdateLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Auto update:"
+
+[node name="AutoUpdate" type="CheckBox" parent="ControlsContainer"]
+layout_mode = 2
+tooltip_text = "(Requires create shortcut) Causes shortcut to auto update Yuzu before launching it."
+focus_mode = 0
+text = "(Requires create shortcut) Auto update Yuzu at launch."
+alignment = 1
+text_overrun_behavior = 4
+
+[node name="DownloadButton" type="Button" parent="."]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.578125
+anchor_right = 0.95
+anchor_bottom = 0.721875
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_next = NodePath(".")
+focus_previous = NodePath(".")
+text = "Download
+"
+metadata/_edit_use_anchors_ = true
+
+[node name="DownloadWarning" type="TextureRect" parent="DownloadButton"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.0416667
+anchor_top = 0.326087
+anchor_right = -0.0127315
+anchor_bottom = 0.688406
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_xly6n")
+expand_mode = 5
+stretch_mode = 4
+metadata/_edit_use_anchors_ = true
+
+[node name="DownloadRequester" type="HTTPRequest" parent="."]
+
+[node name="DownloadWindow" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_7am6t")
+
+[node name="Window" type="ColorRect" parent="DownloadWindow"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -505.0
+offset_top = -125.0
+offset_right = 505.0
+offset_bottom = 127.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.168627, 0.180392, 0.188235, 1)
+
+[node name="DownloadLabelBox" type="Label" parent="DownloadWindow/Window"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -246.5
+offset_top = -93.0
+offset_right = 246.5
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "Downloading..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DownloadProgress" type="ProgressBar" parent="DownloadWindow/Window"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -491.0
+offset_top = -101.0
+offset_right = 491.0
+offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+rounded = true
+
+[node name="DownloadProgressUpdater" type="Timer" parent="DownloadWindow/Window"]
+wait_time = 0.1
+
+[connection signal="toggled" from="ControlsContainer/CustomVersion/CustomVersionCheckBox" to="." method="CustomVersionSpinBoxEditable"]
+[connection signal="pressed" from="ControlsContainer/LocationButton" to="." method="OnInstallLocationButtonPressed"]
+[connection signal="pressed" from="ControlsContainer/ShaderLocationButton" to="." method="OnShadersLocationButtonPressed"]
+[connection signal="text_changed" from="ControlsContainer/ExecutableName" to="." method="ExecutableNameChanged"]
+[connection signal="toggled" from="ControlsContainer/ExtractButton" to="." method="AutoUnpackToggled"]
+[connection signal="toggled" from="ControlsContainer/ClearShadersButton" to="." method="ClearShadersToggle"]
+[connection signal="toggled" from="ControlsContainer/AutoUpdate" to="." method="AutoUpdateToggled"]
+[connection signal="pressed" from="DownloadButton" to="." method="InstallSelectedVersion"]
+[connection signal="request_completed" from="DownloadRequester" to="." method="VersionDownloadCompleted"]
+[connection signal="timeout" from="DownloadWindow/Window/DownloadProgressUpdater" to="." method="UpdateDownloadBar"]
